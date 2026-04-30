@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
@@ -304,5 +304,48 @@ describe("AgoraStore", () => {
 
     expect(board.columns.ready).toHaveLength(1);
     expect(board.columns.blocked).toHaveLength(1);
+  });
+
+  it("installs idempotent Agora instructions into agent docs", () => {
+    const root = createRoot();
+    const agentsPath = path.join(root, "AGENTS.md");
+    writeFileSync(agentsPath, "# Agent Guide\n\nExisting instructions.\n", "utf8");
+    const store = new AgoraStore({ root });
+
+    const first = store.installAgentInstructions({ actor: "human" });
+    const afterFirst = readFileSync(agentsPath, "utf8");
+    const second = store.installAgentInstructions({ actor: "human" });
+    const afterSecond = readFileSync(agentsPath, "utf8");
+
+    expect(first.updated).toEqual(["AGENTS.md"]);
+    expect(first.skipped).toContain("CLAUDE.md");
+    expect(afterFirst).toContain("<!-- AGORA:START -->");
+    expect(afterFirst).toContain("agora board --json");
+    expect(second.updated).toEqual([]);
+    expect(afterSecond).toBe(afterFirst);
+  });
+
+  it("supports CLI installation into explicit agent instruction targets", () => {
+    const root = createRoot();
+    mkdirSync(path.join(root, ".codex"), { recursive: true });
+    const targetPath = path.join(root, ".codex", "CLAUDE.md");
+    writeFileSync(targetPath, "# Claude\n", "utf8");
+    const cliPath = path.resolve(import.meta.dirname, "..", "src", "cli.ts");
+    const tsxPath = resolveTsxCli();
+
+    const output = execFileSync(process.execPath, [
+      tsxPath,
+      cliPath,
+      "install-instructions",
+      "--root",
+      root,
+      "--target",
+      ".codex/CLAUDE.md",
+      "--json",
+    ], { encoding: "utf8" });
+    const result = JSON.parse(output) as { updated: string[] };
+
+    expect(result.updated).toEqual([".codex/CLAUDE.md"]);
+    expect(readFileSync(targetPath, "utf8")).toContain("Do not edit `.agora/tickets.json` directly");
   });
 });

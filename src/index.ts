@@ -1,5 +1,9 @@
 export { AgoraStore } from "./store.js";
 export type {
+  InstallAgentInstructionsInput,
+  InstallAgentInstructionsResult,
+} from "./store.js";
+export type {
   AgoraActor,
   AgoraBoard,
   AgoraCaste,

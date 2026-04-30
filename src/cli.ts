@@ -116,6 +116,7 @@ function usage(): string {
     "agora list [--json]",
     "agora board [--json]",
     "agora plan plan.json [--actor agent] [--json]",
+    "agora install-instructions [--target AGENTS.md] [--actor human] [--json]",
   ].join("\n");
 }
 
@@ -175,6 +176,17 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       }
       const plan = JSON.parse(readFileSync(planPath, "utf8")) as AgoraPlanInput;
       print(store.importPlan(plan, parseActor(parsed.flags)), json);
+      return;
+    }
+    case "install-instructions": {
+      const targets = [
+        ...parsed.positionals,
+        ...parseCsv(flagString(parsed.flags, "target")),
+      ].filter(Boolean);
+      print(store.installAgentInstructions({
+        actor: parseActor(parsed.flags),
+        targets: targets.length > 0 ? targets : undefined,
+      }), json);
       return;
     }
     case undefined:

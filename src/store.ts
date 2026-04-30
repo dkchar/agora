@@ -32,8 +32,41 @@ export interface AgoraStoreOptions {
   dir?: string;
 }
 
+export interface InstallAgentInstructionsInput {
+  targets?: string[];
+  actor?: AgoraActor;
+}
+
+export interface InstallAgentInstructionsResult {
+  updated: string[];
+  skipped: string[];
+}
+
 const DEFAULT_DIR = ".agora";
 const LOOP_SIGNATURE_LIMIT = 3;
+const DEFAULT_AGENT_INSTRUCTION_TARGETS = [
+  "AGENTS.md",
+  "CLAUDE.md",
+  ".codex/AGENTS.md",
+  ".codex/CLAUDE.md",
+];
+const AGORA_INSTRUCTIONS_START = "<!-- AGORA:START -->";
+const AGORA_INSTRUCTIONS_END = "<!-- AGORA:END -->";
+const AGORA_INSTRUCTIONS_BLOCK = `${AGORA_INSTRUCTIONS_START}
+## Agora
+
+Use Agora for persistent local ticket tracking.
+
+- Inspect the board with \`agora board --json\`.
+- List tickets with \`agora list --json\`.
+- Create tickets with \`agora create --title "..." --body "..." --kind task --actor agent --json\`.
+- Move tickets with \`agora move <id> <column> --reason "..." --actor agent --json\`.
+- Import decomposed plans with \`agora plan plan.json --actor agent --json\`.
+- Do not edit \`.agora/tickets.json\` directly; use the CLI/API so events are recorded.
+- Agents may move tickets through legal lifecycle transitions. Humans may use \`--force\` for manual overrides.
+
+Columns: backlog, ready, in_progress, in_review, blocked, ready_to_merge, done, halted.
+${AGORA_INSTRUCTIONS_END}`;
 const LEGAL_TRANSITIONS: ReadonlySet<string> = new Set([
   "backlog->ready",
   "ready->in_progress",
@@ -500,5 +533,49 @@ export class AgoraStore {
     });
     return created;
   }
-}
 
+  installAgentInstructions(
+    input: InstallAgentInstructionsInput = {},
+  ): InstallAgentInstructionsResult {
+    const actor = input.actor ? assertActor(input.actor) : "human";
+    const targets = input.targets ?? DEFAULT_AGENT_INSTRUCTION_TARGETS;
+    const updated: string[] = [];
+    const skipped: string[] = [];
+
+    for (const target of targets) {
+      const relativeTarget = target.replace(/\\/g, "/").replace(/^\.\//, "");
+      const absoluteTarget = path.join(this.root, relativeTarget);
+      if (!existsSync(absoluteTarget)) {
+        skipped.push(relativeTarget);
+        continue;
+      }
+
+      const current = readFileSync(absoluteTarget, "utf8");
+      const next = current.includes(AGORA_INSTRUCTIONS_START) && current.includes(AGORA_INSTRUCTIONS_END)
+        ? current.replace(
+          new RegExp(`${AGORA_INSTRUCTIONS_START}[\\s\\S]*?${AGORA_INSTRUCTIONS_END}`),
+          AGORA_INSTRUCTIONS_BLOCK,
+        )
+        : `${current.trimEnd()}\n\n${AGORA_INSTRUCTIONS_BLOCK}\n`;
+
+      if (next === current) {
+        skipped.push(relativeTarget);
+        continue;
+      }
+      writeFileSync(`${absoluteTarget}.tmp`, next, "utf8");
+      renameSync(`${absoluteTarget}.tmp`, absoluteTarget);
+      updated.push(relativeTarget);
+    }
+
+    this.init(actor);
+    this.appendEvent({
+      actor,
+      action: "artifact",
+      ticketId: null,
+      reason: "Installed Agora agent instructions.",
+      metadata: { updated, skipped },
+    });
+
+    return { updated, skipped };
+  }
+}

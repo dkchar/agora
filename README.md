@@ -131,6 +131,18 @@ Use another store location:
 agora board --root C:\dev\my-project --dir .agora --json
 ```
 
+Install short Agora usage instructions into common agent instruction files such as `AGENTS.md`, `CLAUDE.md`, `.codex/AGENTS.md`, and `.codex/CLAUDE.md`:
+
+```bash
+agora install-instructions --json
+```
+
+Install into a specific file:
+
+```bash
+agora install-instructions --target .codex/CLAUDE.md --json
+```
+
 ## Plan Import
 
 Agora can import a design decomposition as blocked/parallel tickets.
