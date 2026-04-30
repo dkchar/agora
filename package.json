@@ -1,0 +1,52 @@
+{
+  "name": "@dkchar/agora",
+  "version": "0.1.0",
+  "description": "Standalone persistent ticket board for human and agent workflows",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "agora": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "test": "vitest run",
+    "lint": "tsc --project tsconfig.json --noEmit",
+    "prepack": "npm run build"
+  },
+  "files": [
+    "dist",
+    "SPEC.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "keywords": [
+    "agents",
+    "kanban",
+    "tickets",
+    "workflow",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dkchar/agora.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dkchar/agora/issues"
+  },
+  "homepage": "https://github.com/dkchar/agora#readme",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^25.4.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
