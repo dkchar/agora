@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
@@ -13,6 +13,18 @@ function createRoot() {
   const root = mkdtempSync(path.join(tmpdir(), "agora-"));
   tempRoots.push(root);
   return root;
+}
+
+function resolveTsxCli() {
+  const candidates = [
+    path.resolve(import.meta.dirname, "..", "node_modules", "tsx", "dist", "cli.mjs"),
+    path.resolve(import.meta.dirname, "..", "..", "..", "node_modules", "tsx", "dist", "cli.mjs"),
+  ];
+  const match = candidates.find((candidate) => existsSync(candidate));
+  if (!match) {
+    throw new Error(`Unable to find tsx CLI. Tried: ${candidates.join(", ")}`);
+  }
+  return match;
 }
 
 afterEach(() => {
@@ -259,7 +271,7 @@ describe("AgoraStore", () => {
   it("supports the built CLI entrypoint for agent plan import", () => {
     const root = createRoot();
     const cliPath = path.resolve(import.meta.dirname, "..", "src", "cli.ts");
-    const tsxPath = path.resolve(import.meta.dirname, "..", "node_modules", "tsx", "dist", "cli.mjs");
+    const tsxPath = resolveTsxCli();
     const planPath = path.join(root, "plan.json");
     writeFileSync(planPath, JSON.stringify({
       title: "CLI plan",
