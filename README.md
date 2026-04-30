@@ -252,13 +252,7 @@ CI runs test, lint, build, and `npm pack --dry-run`.
 
 Publishing is handled by GitHub Actions when a release is published.
 
-Required repository secret:
-
-```text
-NPM_TOKEN
-```
-
-The publish workflow uses npm provenance and publishes `@dkchar/agora` with public access.
+The publish workflow uses npm trusted publishing with GitHub Actions OIDC. No npm token secret is required. Configure trusted publishing for `@dkchar/agora` in npm so releases from `dkchar/agora` may publish with provenance.
 
 ## License
 
