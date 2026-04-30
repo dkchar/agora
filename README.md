@@ -1,5 +1,7 @@
 # Agora
 
+[![npm version](https://img.shields.io/npm/v/@dkchar/agora?label=npm)](https://www.npmjs.com/package/@dkchar/agora)
+
 Agora is a small persistent ticket board for humans and coding agents.
 
 It stores work as local JSON, keeps an append-only event log, and exposes a CLI that agents can safely use to create, move, and inspect tickets. It is designed to be useful on its own first; Aegis can later use it as a lightweight work graph backend.
