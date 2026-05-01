@@ -123,6 +123,13 @@ export interface MoveTicketInput {
   force?: boolean;
 }
 
+export interface LinkBlockingTicketInput {
+  blockingTicketId: string;
+  blockedTicketId: string;
+  actor: AgoraActor;
+  reason: string;
+}
+
 export interface LeaseTicketInput {
   ticketId: string;
   caste: AgoraCaste;

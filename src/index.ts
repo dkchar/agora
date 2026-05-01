@@ -18,6 +18,7 @@ export type {
   AgoraTicket,
   AttachArtifactInput,
   CreateTicketInput,
+  LinkBlockingTicketInput,
   LeaseTicketInput,
   MoveTicketInput,
 } from "./types.js";

@@ -139,6 +139,47 @@ describe("AgoraStore", () => {
     ]);
   });
 
+  it("links an existing blocking ticket and records an event", () => {
+    const root = createRoot();
+    const store = new AgoraStore({ root });
+    const blocker = store.createTicket({
+      title: "Blocking contract",
+      body: "Define missing contract.",
+      column: "ready",
+      actor: "aegis",
+    }, "2026-05-01T12:00:00.000Z");
+    const parent = store.createTicket({
+      title: "Parent work",
+      body: "Wait for contract.",
+      column: "ready",
+      actor: "aegis",
+    }, "2026-05-01T12:00:01.000Z");
+
+    const linked = store.linkBlockingTicket({
+      blockingTicketId: blocker.id,
+      blockedTicketId: parent.id,
+      actor: "aegis",
+      reason: "Parent waits for contract blocker.",
+    }, "2026-05-01T12:00:02.000Z");
+
+    expect(linked.blocked.column).toBe("blocked");
+    expect(linked.blocked.blockedBy).toEqual([blocker.id]);
+    expect(linked.blocking.blocks).toEqual([parent.id]);
+
+    const events = readFileSync(path.join(root, ".agora", "events.jsonl"), "utf8")
+      .trim()
+      .split(/\r?\n/)
+      .map((line) => JSON.parse(line) as { action: string; ticketId: string | null; metadata?: Record<string, unknown> });
+    expect(events.at(-1)).toMatchObject({
+      action: "child_linked",
+      ticketId: parent.id,
+      metadata: {
+        blockingTicketId: blocker.id,
+        blockedTicketId: parent.id,
+      },
+    });
+  });
+
   it("allows agent autonomy inside legal transitions and rejects illegal force", () => {
     const root = createRoot();
     const store = new AgoraStore({ root });

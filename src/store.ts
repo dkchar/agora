@@ -24,6 +24,7 @@ import {
   type AttachArtifactInput,
   type CreateTicketInput,
   type LeaseTicketInput,
+  type LinkBlockingTicketInput,
   type MoveTicketInput,
 } from "./types.js";
 
@@ -422,6 +423,79 @@ export class AgoraStore {
       });
     }
     return this.load().tickets[ticket.id];
+  }
+
+  linkBlockingTicket(
+    input: LinkBlockingTicketInput,
+    now?: string,
+  ): { blocking: AgoraTicket; blocked: AgoraTicket } {
+    const actor = assertActor(input.actor);
+    const snapshot = this.init(actor);
+    const blocking = snapshot.tickets[input.blockingTicketId];
+    const blocked = snapshot.tickets[input.blockedTicketId];
+    if (!blocking) {
+      throw new Error(`Unknown Agora ticket "${input.blockingTicketId}".`);
+    }
+    if (!blocked) {
+      throw new Error(`Unknown Agora ticket "${input.blockedTicketId}".`);
+    }
+    if (blocking.id === blocked.id) {
+      throw new Error("Agora tickets cannot block themselves.");
+    }
+
+    const timestamp = nowIso(now);
+    const nextBlocking: AgoraTicket = {
+      ...blocking,
+      blocks: [...new Set([...blocking.blocks, blocked.id])].sort(),
+      updatedAt: timestamp,
+    };
+    const shouldMoveBlocked = blocked.column !== "done"
+      && blocked.column !== "halted"
+      && blocked.column !== "blocked";
+    const nextBlocked: AgoraTicket = {
+      ...blocked,
+      column: shouldMoveBlocked ? "blocked" : blocked.column,
+      blockedBy: [...new Set([...blocked.blockedBy, blocking.id])].sort(),
+      updatedAt: timestamp,
+    };
+    const tickets = {
+      ...snapshot.tickets,
+      [blocking.id]: nextBlocking,
+      [blocked.id]: nextBlocked,
+    };
+
+    this.save({ ...snapshot, tickets });
+    if (shouldMoveBlocked) {
+      this.appendEvent({
+        actor,
+        action: "blocked",
+        ticketId: blocked.id,
+        from: blocked.column,
+        to: "blocked",
+        reason: input.reason,
+        metadata: {
+          blockingTicketId: blocking.id,
+        },
+      });
+    }
+    this.appendEvent({
+      actor,
+      action: "child_linked",
+      ticketId: blocked.id,
+      from: blocked.column,
+      to: nextBlocked.column,
+      reason: input.reason,
+      metadata: {
+        blockingTicketId: blocking.id,
+        blockedTicketId: blocked.id,
+      },
+    });
+
+    const reloaded = this.load().tickets;
+    return {
+      blocking: reloaded[blocking.id]!,
+      blocked: reloaded[blocked.id]!,
+    };
   }
 
   leaseTicket(input: LeaseTicketInput): AgoraTicket {
