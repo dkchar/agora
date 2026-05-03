@@ -26,6 +26,7 @@ import {
   type LeaseTicketInput,
   type LinkBlockingTicketInput,
   type MoveTicketInput,
+  type UpdateTicketScopeInput,
 } from "./types.js";
 
 export interface AgoraStoreOptions {
@@ -496,6 +497,43 @@ export class AgoraStore {
       blocking: reloaded[blocking.id]!,
       blocked: reloaded[blocked.id]!,
     };
+  }
+
+  updateTicketScope(input: UpdateTicketScopeInput, now?: string): AgoraTicket {
+    const actor = assertActor(input.actor);
+    const snapshot = this.init(actor);
+    const ticket = snapshot.tickets[input.ticketId];
+    if (!ticket) {
+      throw new Error(`Unknown Agora ticket "${input.ticketId}".`);
+    }
+
+    const timestamp = nowIso(now);
+    const nextScope = normalizeStringList(input.scope, "scope");
+    const updated: AgoraTicket = {
+      ...ticket,
+      scope: nextScope,
+      updatedAt: timestamp,
+    };
+    this.save({
+      ...snapshot,
+      tickets: {
+        ...snapshot.tickets,
+        [ticket.id]: updated,
+      },
+    });
+    this.appendEvent({
+      actor,
+      action: "scope_updated",
+      ticketId: ticket.id,
+      from: ticket.column,
+      to: ticket.column,
+      reason: input.reason,
+      metadata: {
+        previousScope: ticket.scope,
+        scope: nextScope,
+      },
+    });
+    return this.load().tickets[ticket.id]!;
   }
 
   leaseTicket(input: LeaseTicketInput): AgoraTicket {

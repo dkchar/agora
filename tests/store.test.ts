@@ -277,6 +277,40 @@ describe("AgoraStore", () => {
     expect(current.attempts.loop).toBe(1);
   });
 
+  it("updates ticket scope through the store and records an event", () => {
+    const root = createRoot();
+    const store = new AgoraStore({ root });
+    const ticket = store.createTicket({
+      title: "Scoped blocker",
+      body: "Needs more files.",
+      column: "ready",
+      actor: "seed",
+      scope: ["package.json"],
+    });
+
+    const updated = store.updateTicketScope({
+      ticketId: ticket.id,
+      scope: ["package.json", "src/App.tsx"],
+      actor: "aegis",
+      reason: "Aegis accepted typed scope expansion.",
+    });
+
+    expect(updated.scope).toEqual(["package.json", "src/App.tsx"]);
+    const events = readFileSync(path.join(root, ".agora", "events.jsonl"), "utf8")
+      .trim()
+      .split(/\r?\n/)
+      .map((line) => JSON.parse(line) as { action: string; ticketId: string | null; reason?: string; metadata?: Record<string, unknown> });
+    expect(events.at(-1)).toMatchObject({
+      action: "scope_updated",
+      ticketId: ticket.id,
+      reason: "Aegis accepted typed scope expansion.",
+      metadata: {
+        previousScope: ["package.json"],
+        scope: ["package.json", "src/App.tsx"],
+      },
+    });
+  });
+
   it("attaches artifacts and leases tickets for caste work", () => {
     const root = createRoot();
     const store = new AgoraStore({ root });

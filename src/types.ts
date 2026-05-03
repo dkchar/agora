@@ -80,6 +80,7 @@ export type AgoraEventAction =
   | "artifact"
   | "moved"
   | "child_linked"
+  | "scope_updated"
   | "blocked"
   | "unblocked"
   | "halted"
@@ -126,6 +127,13 @@ export interface MoveTicketInput {
 export interface LinkBlockingTicketInput {
   blockingTicketId: string;
   blockedTicketId: string;
+  actor: AgoraActor;
+  reason: string;
+}
+
+export interface UpdateTicketScopeInput {
+  ticketId: string;
+  scope: string[];
   actor: AgoraActor;
   reason: string;
 }
